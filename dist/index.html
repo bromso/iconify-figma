@@ -234,7 +234,7 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 				// Look for icon elements that might indicate selection
 				const iconElements = document.querySelectorAll('[data-icon]');
 				const currentIcons = Array.from(iconElements).map(el => el.getAttribute('data-icon')).filter(Boolean);
-				
+
 				if (currentIcons.length > 0 && JSON.stringify(currentIcons) !== JSON.stringify(lastSelectedIcons)) {
 					console.log('Detected icon selection change:', currentIcons);
 					lastSelectedIcons = currentIcons;
@@ -244,57 +244,106 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 				}
 			}, 1000);
 
-			// Monitor for "Import as component" button clicks and icon imports
-			let lastUIState = '';
-			let importButtonClickHandler = null;
-			
-			setInterval(() => {
-				// Look for import buttons and add click handlers
-				const importButtons = document.querySelectorAll('button');
-				importButtons.forEach(button => {
+			// More comprehensive detection of import actions
+			let lastSelectedIcons = [];
+			let lastButtonCount = 0;
+
+			// Monitor all button clicks globally
+			document.addEventListener('click', (e) => {
+				const button = e.target.closest('button');
+				if (button) {
 					const buttonText = button.textContent?.toLowerCase() || '';
-					if ((buttonText.includes('import') && buttonText.includes('component')) || 
-						buttonText.includes('import as component') ||
-						button.getAttribute('data-action') === 'import') {
-						
-						if (!button.hasAttribute('data-config-handler')) {
-							button.setAttribute('data-config-handler', 'true');
-							button.addEventListener('click', (e) => {
-								console.log('Import button clicked:', buttonText);
-								
-								// Wait a bit for the import to process, then look for selected icons
-								setTimeout(() => {
-									const selectedIcons = document.querySelectorAll('.iui-grid-icon--selected');
-									console.log('Found selected icons after import:', selectedIcons.length);
-									
-									for (let icon of selectedIcons) {
-										const iconElement = icon.querySelector('iconify-icon');
-										if (iconElement) {
-											const iconName = iconElement.getAttribute('icon');
-											if (iconName) {
-												console.log('Found imported icon:', iconName);
-												updateComponentConfig(iconName);
-												toggleComponentConfig();
-												break;
-											}
-										}
-									}
-								}, 500);
-							});
+					console.log('Button clicked:', buttonText, button);
+
+					// Check for various import button patterns
+					if (buttonText.includes('import') ||
+						buttonText.includes('add') ||
+						buttonText.includes('create') ||
+						button.getAttribute('data-action') === 'import' ||
+						button.classList.contains('import-button') ||
+						button.id.includes('import')) {
+
+						console.log('Import-related button clicked, waiting for icon selection...');
+
+						// Wait for the import to complete and check for selected icons
+						setTimeout(() => {
+							checkForSelectedIcons();
+						}, 1000);
+					}
+				}
+			});
+
+			// Function to check for selected icons
+			function checkForSelectedIcons() {
+				console.log('Checking for selected icons...');
+
+				// Try multiple selectors for selected icons
+				const selectors = [
+					'.iui-grid-icon--selected',
+					'.iui-grid-icon.selected',
+					'[data-selected="true"]',
+					'.selected',
+					'[aria-selected="true"]'
+				];
+
+				let selectedIcons = [];
+				for (let selector of selectors) {
+					const found = document.querySelectorAll(selector);
+					if (found.length > 0) {
+						selectedIcons = found;
+						console.log(`Found ${found.length} selected icons with selector: ${selector}`);
+						break;
+					}
+				}
+
+				// Also check all grid icons for any that might be selected
+				if (selectedIcons.length === 0) {
+					const allGridIcons = document.querySelectorAll('.iui-grid-icon');
+					console.log(`Found ${allGridIcons.length} total grid icons`);
+
+					// Look for icons with iconify-icon elements
+					allGridIcons.forEach((icon, index) => {
+						const iconElement = icon.querySelector('iconify-icon');
+						if (iconElement) {
+							const iconName = iconElement.getAttribute('icon');
+							if (iconName) {
+								console.log(`Grid icon ${index}: ${iconName}`);
+								// If we find any icon, use it (this is a fallback)
+								if (selectedIcons.length === 0) {
+									selectedIcons = [icon];
+								}
+							}
+						}
+					});
+				}
+
+				if (selectedIcons.length > 0) {
+					console.log('Processing selected icons...');
+					for (let icon of selectedIcons) {
+						const iconElement = icon.querySelector('iconify-icon');
+						if (iconElement) {
+							const iconName = iconElement.getAttribute('icon');
+							if (iconName) {
+								console.log('Found icon to configure:', iconName);
+								updateComponentConfig(iconName);
+								toggleComponentConfig();
+								return;
+							}
 						}
 					}
-				});
-				
-				// Also monitor for UI state changes that might indicate successful import
-				const gridIcons = document.querySelectorAll('.iui-grid-icon');
-				const selectedIcons = document.querySelectorAll('.iui-grid-icon--selected');
-				const currentState = `${gridIcons.length}-${selectedIcons.length}`;
-				
-				if (currentState !== lastUIState && selectedIcons.length > 0) {
-					console.log('UI state changed, selected icons:', selectedIcons.length);
-					lastUIState = currentState;
+				} else {
+					console.log('No selected icons found');
 				}
-			}, 300);
+			}
+
+			// Also monitor for changes in the UI
+			setInterval(() => {
+				const currentButtonCount = document.querySelectorAll('button').length;
+				if (currentButtonCount !== lastButtonCount) {
+					console.log('Button count changed:', currentButtonCount);
+					lastButtonCount = currentButtonCount;
+				}
+			}, 1000);
 
 			// Close button functionality
 			document.addEventListener('DOMContentLoaded', () => {
@@ -304,6 +353,18 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 						document.getElementById('component-config').style.display = 'none';
 					});
 				}
+
+				// Test the component config panel after a delay
+				setTimeout(() => {
+					console.log('Testing component config panel...');
+					updateComponentConfig('material-symbols:supervised-user-circle');
+					toggleComponentConfig();
+
+					// Hide it after 3 seconds for testing
+					setTimeout(() => {
+						document.getElementById('component-config').style.display = 'none';
+					}, 3000);
+				}, 2000);
 			});
 		</script>
 	</body>

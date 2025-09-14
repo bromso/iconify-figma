@@ -316,7 +316,7 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 						const iconElement = icon.querySelector('iconify-icon');
 						if (iconElement) {
 							const iconName = iconElement.getAttribute('icon');
-							if (iconName) {
+							if (iconName && typeof iconName === 'string' && iconName.includes(':')) {
 								console.log(`Grid icon ${index}: ${iconName}`);
 								// If we find any icon, use it (this is a fallback)
 								if (selectedIcons.length === 0) {
@@ -333,7 +333,7 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 						const iconElement = icon.querySelector('iconify-icon');
 						if (iconElement) {
 							const iconName = iconElement.getAttribute('icon');
-							if (iconName) {
+							if (iconName && typeof iconName === 'string' && iconName.includes(':')) {
 								console.log('Found icon to configure:', iconName);
 								updateComponentConfig(iconName);
 								toggleComponentConfig();

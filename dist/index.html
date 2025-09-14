@@ -198,6 +198,36 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 			// Listen for messages from the plugin
 			window.addEventListener('message', (event) => {
 				console.log('Received message:', event.data);
+
+				// Handle the wrapped message format
+				if (event.data && event.data.pluginMessage) {
+					const message = event.data.pluginMessage;
+					console.log('Plugin message:', message);
+
+					if (message.type === 'plugin:icon-imported') {
+						updateComponentConfig(message.iconName);
+						toggleComponentConfig();
+					}
+
+					// Listen for the success notice that indicates an icon was imported
+					if (message.type === 'plugin:notice' &&
+						message.color === 'success' &&
+						message.text &&
+						message.text.includes('Imported')) {
+						console.log('Detected import success message:', message.text);
+
+						// Extract icon name from the success message
+						const match = message.text.match(/Imported ([^ ]+) to Figma/);
+						if (match && match[1]) {
+							const iconName = match[1];
+							console.log('Extracted icon name from success message:', iconName);
+							updateComponentConfig(iconName);
+							toggleComponentConfig();
+						}
+					}
+				}
+
+				// Also handle direct messages (fallback)
 				if (event.data && event.data.type === 'plugin:icon-imported') {
 					updateComponentConfig(event.data.iconName);
 					toggleComponentConfig();
@@ -221,43 +251,8 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 				}
 			});
 
-			// Intercept import messages and send component config message
-			const originalPostMessage = parent.postMessage;
-			parent.postMessage = function(message, targetOrigin) {
-				console.log('Sending message:', message);
-				// Call the original postMessage
-				originalPostMessage.call(this, message, targetOrigin);
-
-				// Check if this is an import message
-				if (message && message.type === 'ui:import-icons') {
-					console.log('Detected icon import message:', message);
-
-					// Try to get icon name from different possible locations
-					let iconName = null;
-
-					if (message.data && message.data.icons) {
-						const iconNames = Object.keys(message.data.icons);
-						if (iconNames.length > 0) {
-							iconName = iconNames[0];
-						}
-					}
-
-					// If we found an icon name, show the config
-					if (iconName) {
-						console.log('Processing icon from import message:', iconName);
-						setTimeout(() => {
-							updateComponentConfig(iconName);
-							toggleComponentConfig();
-						}, 100);
-					} else {
-						console.log('No icon name found in import message, will check for selected icons...');
-						// If no icon name in message, check for selected icons after a delay
-						setTimeout(() => {
-							checkForSelectedIcons();
-						}, 500);
-					}
-				}
-			};
+			// Monitor for import actions by watching the UI
+			let importInProgress = false;
 
 			// More comprehensive detection of import actions
 			let lastSelectedIcons = [];
@@ -369,17 +364,14 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 					});
 				}
 
-				// Test the component config panel after a delay
-				setTimeout(() => {
-					console.log('Testing component config panel...');
-					updateComponentConfig('material-symbols:supervised-user-circle');
-					toggleComponentConfig();
-
-					// Hide it after 3 seconds for testing
-					setTimeout(() => {
-						document.getElementById('component-config').style.display = 'none';
-					}, 3000);
-				}, 2000);
+				// Add keyboard shortcut for testing (Ctrl+Shift+C)
+				document.addEventListener('keydown', (e) => {
+					if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+						console.log('Testing component config panel with keyboard shortcut...');
+						updateComponentConfig('material-symbols:supervised-user-circle');
+						toggleComponentConfig();
+					}
+				});
 			});
 		</script>
 	</body>

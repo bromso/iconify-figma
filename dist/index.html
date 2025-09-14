@@ -202,6 +202,23 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 					updateComponentConfig(event.data.iconName);
 					toggleComponentConfig();
 				}
+
+				// Also listen for the success notice that indicates an icon was imported
+				if (event.data && event.data.type === 'plugin:notice' &&
+					event.data.color === 'success' &&
+					event.data.text &&
+					event.data.text.includes('Imported')) {
+					console.log('Detected import success message:', event.data.text);
+
+					// Extract icon name from the success message
+					const match = event.data.text.match(/Imported ([^ ]+) to Figma/);
+					if (match && match[1]) {
+						const iconName = match[1];
+						console.log('Extracted icon name from success message:', iconName);
+						updateComponentConfig(iconName);
+						toggleComponentConfig();
+					}
+				}
 			});
 
 			// Intercept import messages and send component config message
@@ -212,37 +229,35 @@ ${ar[R.attribution?1:0]}`:""});return($,R)=>(m(),x("div",Xb,[O("div",Qb,[O("sect
 				originalPostMessage.call(this, message, targetOrigin);
 
 				// Check if this is an import message
-				if (message && message.type === 'ui:import-icons' && message.data && message.data.icons) {
-					console.log('Detected icon import:', message.data.icons);
-					// Get the first icon name from the import data
-					const iconNames = Object.keys(message.data.icons);
-					if (iconNames.length > 0) {
-						const iconName = iconNames[0];
-						console.log('Processing icon:', iconName);
-						// Send a message to show component configuration
+				if (message && message.type === 'ui:import-icons') {
+					console.log('Detected icon import message:', message);
+
+					// Try to get icon name from different possible locations
+					let iconName = null;
+
+					if (message.data && message.data.icons) {
+						const iconNames = Object.keys(message.data.icons);
+						if (iconNames.length > 0) {
+							iconName = iconNames[0];
+						}
+					}
+
+					// If we found an icon name, show the config
+					if (iconName) {
+						console.log('Processing icon from import message:', iconName);
 						setTimeout(() => {
 							updateComponentConfig(iconName);
 							toggleComponentConfig();
 						}, 100);
+					} else {
+						console.log('No icon name found in import message, will check for selected icons...');
+						// If no icon name in message, check for selected icons after a delay
+						setTimeout(() => {
+							checkForSelectedIcons();
+						}, 500);
 					}
 				}
 			};
-
-			// Alternative approach: Monitor for icon selection changes
-			let lastSelectedIcons = [];
-			setInterval(() => {
-				// Look for icon elements that might indicate selection
-				const iconElements = document.querySelectorAll('[data-icon]');
-				const currentIcons = Array.from(iconElements).map(el => el.getAttribute('data-icon')).filter(Boolean);
-
-				if (currentIcons.length > 0 && JSON.stringify(currentIcons) !== JSON.stringify(lastSelectedIcons)) {
-					console.log('Detected icon selection change:', currentIcons);
-					lastSelectedIcons = currentIcons;
-					const iconName = currentIcons[0];
-					updateComponentConfig(iconName);
-					toggleComponentConfig();
-				}
-			}, 1000);
 
 			// More comprehensive detection of import actions
 			let lastSelectedIcons = [];
